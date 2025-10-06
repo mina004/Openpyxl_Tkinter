@@ -2,15 +2,10 @@ from __future__ import annotations
 import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-from typing import Dict, Optional
-
+from typing import Dict
 from .excel_processor import process_excel_file
 
-
 def select_excel_file(entry_widget: tk.Entry) -> None:
-    """
-    Open a file dialog and put the chosen path into the Entry widget.
-    """
     file_path = filedialog.askopenfilename(
         title="Select Excel file",
         filetypes=[("Excel files", "*.xlsx;*.xls")],
@@ -19,14 +14,9 @@ def select_excel_file(entry_widget: tk.Entry) -> None:
         entry_widget.delete(0, tk.END)
         entry_widget.insert(0, file_path)
 
-
 def update_progress(progressbar: ttk.Progressbar, var: tk.DoubleVar, value: float) -> None:
-    """
-    Update the progress bar (0..1).
-    """
     var.set(max(0.0, min(1.0, float(value))))
     progressbar.update_idletasks()
-
 
 def process_file_in_background(
     file_path: str,
@@ -35,10 +25,6 @@ def process_file_in_background(
     output_text: tk.Text,
     start_button: tk.Button,
 ) -> None:
-    """
-    Spawn worker thread to process the Excel so the UI stays responsive.
-    """
-
     def worker() -> None:
         try:
             results: Dict[str, int] = process_excel_file(
@@ -67,7 +53,6 @@ def process_file_in_background(
     start_button.config(state="disabled")
     threading.Thread(target=worker, daemon=True).start()
 
-
 def create_main_window() -> tk.Tk:
     root = tk.Tk()
     root.title("XLSX Reader")
@@ -77,29 +62,20 @@ def create_main_window() -> tk.Tk:
     root.rowconfigure(0, weight=1)
     root.columnconfigure(0, weight=1)
 
-    # File chooser
-    file_label = ttk.Label(frm, text="Excel file:")
-    file_label.grid(row=0, column=0, sticky="w", padx=(0, 8))
-
+    ttk.Label(frm, text="Excel file:").grid(row=0, column=0, sticky="w", padx=(0, 8))
     file_entry = ttk.Entry(frm, width=50)
     file_entry.grid(row=0, column=1, sticky="ew")
     frm.columnconfigure(1, weight=1)
+    ttk.Button(frm, text="Browse", command=lambda: select_excel_file(file_entry)).grid(row=0, column=2, padx=(8, 0))
 
-    browse_btn = ttk.Button(frm, text="Browse", command=lambda: select_excel_file(file_entry))
-    browse_btn.grid(row=0, column=2, padx=(8, 0))
-
-    # Progress
     progress_var = tk.DoubleVar(value=0.0)
-    progress = ttk.Progressbar(frm, orient="horizontal", mode="determinate",
-                               variable=progress_var, maximum=1.0)
+    progress = ttk.Progressbar(frm, orient="horizontal", mode="determinate", variable=progress_var, maximum=1.0)
     progress.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(12, 6))
 
-    # Output
     output = tk.Text(frm, height=10, width=60, state="disabled")
     output.grid(row=2, column=0, columnspan=3, sticky="nsew")
     frm.rowconfigure(2, weight=1)
 
-    # Start
     def on_start() -> None:
         path = file_entry.get().strip()
         if not path:
@@ -111,7 +87,6 @@ def create_main_window() -> tk.Tk:
     start_btn.grid(row=3, column=0, columnspan=3, pady=(10, 0))
 
     return root
-
 
 def run_app() -> None:
     root = create_main_window()
