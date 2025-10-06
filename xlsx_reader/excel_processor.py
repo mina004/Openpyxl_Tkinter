@@ -1,56 +1,44 @@
-# xlsx_reader/excel_processor.py
 from __future__ import annotations
-
 from typing import Callable, Dict, List, Optional
-
-from openpyxl import load_workbook
+import pandas as pd
 
 
 def get_sheet_names(file_path: str) -> List[str]:
     """
-    Return all sheet names in the Excel workbook at file_path.
-
-    Uses openpyxl and closes the workbook explicitly.
-    Raises FileNotFoundError if the file doesn't exist.
+    Return the list of sheet names in the given Excel file.
     """
-    wb = load_workbook(filename=file_path, read_only=True, data_only=True)
-    try:
-        return list(wb.sheetnames)
-    finally:
-        wb.close()
+    xls = pd.ExcelFile(file_path)
+    return list(xls.sheet_names)
 
 
 def get_sheet_row_count(file_path: str, sheet_name: str) -> int:
     """
-    Return the number of data rows in the given sheet, EXCLUDING the header row.
-
-    We treat the first row as a header.
-    Count rows from row 2 onward that contain at least one non-empty value.
+    Return the number of (data) rows in a given sheet.
+    The header row is not counted by pandas, so len(df) is correct.
     """
-    wb = load_workbook(filename=file_path, read_only=True, data_only=True)
-    try:
-        ws = wb[sheet_name]
-        count = 0
-        # start from row 2 (exclude header)
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if any(cell is not None and str(cell).strip() != "" for cell in row):
-                count += 1
-        return count
-    finally:
-        wb.close()
+    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    return int(len(df))
 
 
 def process_excel_file(
     file_path: str,
-    progress_callback: Optional[Callable[[int, int, str], None]] = None,
+    progress_callback: Optional[Callable[[float], None]] = None,
 ) -> Dict[str, int]:
     """
-    Process all sheets and return a mapping of {sheet_name: row_count}.
-
-    If provided, progress_callback is called as:
-        progress_callback(current_index, total_sheets, sheet_name)
-    where current_index starts at 1.
+    Process all sheets in the Excel file and return a dict:
+    {sheet_name: row_count}. If a progress_callback is provided,
+    call it with a float between 0 and 1 as sheets are processed.
     """
     sheet_names = get_sheet_names(file_path)
-    total = len(sheet_names)
-    results: Dict[str, int]
+    results: Dict[str, int] = {}
+
+    total = len(sheet_names) or 1
+    for i, name in enumerate(sheet_names, start=1):
+        results[name] = get_sheet_row_count(file_path, name)
+        if progress_callback:
+            progress_callback(i / total)
+
+    # ensure final 100% update even for empty files / edge cases
+    if progress_callback:
+        progress_callback(1.0)
+    return results
